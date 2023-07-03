@@ -75,7 +75,7 @@ jobs:
             echo "$dir"
             helm package $dir
             version=$(cat $dir/Chart.yaml | grep "version: " | cut -d " " -f 2)
-            helm push $dir-$version.tgz oci://$(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
+            helm push $dir-$version.tgz oci://$${{ secrets.ACR_URL }}
           done
       - name: 'Commit new version to main and create tag'
         run: |
