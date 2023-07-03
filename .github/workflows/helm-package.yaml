@@ -38,7 +38,7 @@ jobs:
         
       - name: Helm repo login
         run: |
-          helm repo login ${{ secrets.ACR_URL }} --username ${{ secrets.ACR_USERNAME }} --password ${{ secrets.ACR_PASSWORD }}
+          helm registry login ${{ secrets.ACR_URL }} --username ${{ secrets.ACR_USERNAME }} --password ${{ secrets.ACR_PASSWORD }}
       
       - name: 'Auto Increase Helm Version'
         run: |
