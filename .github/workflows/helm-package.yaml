@@ -4,10 +4,11 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'charts'
     paths-ignore:
       - 'charts/*/Chart.yaml'
+      - .github
+      - .gitignore
+      - README.md
 
 jobs:
   packing:
