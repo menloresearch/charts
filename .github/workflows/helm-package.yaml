@@ -75,7 +75,7 @@ jobs:
             echo "$dir"
             helm package $dir
             version=$(cat $dir/Chart.yaml | grep "version: " | cut -d " " -f 2)
-            helm push $dir-$version.tgz oci://$${{ secrets.ACR_URL }}/helm
+            helm push $dir-$version.tgz oci://${{ secrets.ACR_URL }}/helm
           done
       - name: 'Commit new version to main and create tag'
         run: |
