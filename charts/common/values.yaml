@@ -27,7 +27,6 @@ externalSecret:
     - key: FOO2          # The environment variable key that will be present inside pod
       objectName: FOO2   # The Secret Object key on Azure Keyvaults
 
-
 nameOverride: "common-module"
 fullnameOverride: "common-module"
 

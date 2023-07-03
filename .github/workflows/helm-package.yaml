@@ -34,7 +34,7 @@ jobs:
           git config --global user.name "Service Account"
           echo "Changes in these directories trigger the build:"
           changed_dirs=$(git -c http.extraheader="AUTHORIZATION: bearer ${{ secrets.GITHUB_TOKEN }}" diff --name-only HEAD HEAD~1 | grep 'charts/' | awk -F/ '{print $2}' | uniq)
-          echo $changed_dirs > $GITHUB_ACTION_PATH/change_dir.txt
+          echo $changed_dirs > /tmp/change_dir.txt
         
       - name: Helm repo login
         run: |
@@ -43,7 +43,7 @@ jobs:
       - name: 'Auto Increase Helm Version'
         run: |
           cd charts
-          for dir in $(cat $GITHUB_ACTION_PATH/change_dir.txt)
+          for dir in $(cat /tmp/change_dir.txt)
           do
             echo "$dir"
             # Extract current version
@@ -86,8 +86,8 @@ jobs:
             git config --global user.email "service@jan.ai"
             git config --global user.name "Service Account"
             git add charts/$dir/Chart.yaml
-            git commit -m "$GITHUB_REPOSITORY: Update tag build $version"
+            git commit -m "${GITHUB_REPOSITORY}: Update tag build $version"
             git -c http.extraheader="AUTHORIZATION: bearer ${{ secrets.GITHUB_TOKEN }}" push origin HEAD:main
-            git tag -a $dir-$version -m "$GITHUB_REPOSITORY: Update tag build $version for $dir"
+            git tag -a $dir-$version -m "${GITHUB_REPOSITORY}: Update tag build $version for $dir"
             git -c http.extraheader="AUTHORIZATION: bearer ${{ secrets.GITHUB_TOKEN }}" push origin $dir-$version
           done
