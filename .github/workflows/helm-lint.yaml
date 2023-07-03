@@ -1,6 +1,9 @@
 name: helm lint
 
-on: []
+on:
+  pull_request:
+    branches:
+      - main
 
 jobs:
   linting:
