@@ -1,0 +1,93 @@
+name: helm lint
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'charts/*/Chart.yaml'
+      - .github
+      - .gitignore
+      - README.md
+
+jobs:
+  packing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:  
+          fetch-depth: '0'
+
+      - uses: azure/setup-helm@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }} # only needed if version is 'latest'
+      - name: check linting
+        run: |
+          helm lint charts/*
+          for dir in $(ls charts)
+          do
+            helm template charts/$dir
+          done
+      - name: Check Path Change
+        run: |
+          git config --global user.email "service@jan.ai"
+          git config --global user.name "Service Account"
+          echo "Changes in these directories trigger the build:"
+          changed_dirs=$(git -c http.extraheader="AUTHORIZATION: bearer ${{ secrets.GITHUB_TOKEN }}" diff --name-only HEAD HEAD~1 | grep 'charts/' | awk -F/ '{print $2}' | uniq)
+          echo $changed_dirs > ${{ env.GITHUB_ACTION_PATH }}/change_dir.txt
+        
+      - name: Helm repo login
+        run: |
+          helm repo login ${{ secrets.ACR_URL }} --username ${{ secrets.ACR_USERNAME }} --password ${{ secrets.ACR_PASSWORD }}
+      
+      - name: 'Auto Increase Helm Version'
+        run: |
+          cd charts
+          for dir in $(cat $(Build.SourcesDirectory)/change_dir.txt)
+          do
+            echo "$dir"
+            # Extract current version
+            current_version=$(cat $dir/Chart.yaml | grep "version: " | cut -d " " -f 2)
+          
+            # Break the version into its components
+            major_version=$(echo $current_version | cut -d "." -f 1)
+            minor_version=$(echo $current_version | cut -d "." -f 2)
+            patch_version=$(echo $current_version | cut -d "." -f 3)
+          
+            # Increment the patch version by one
+            new_patch_version=$((patch_version+1))
+          
+            # Construct the new version
+            new_version="$major_version.$minor_version.$new_patch_version"
+          
+            # Replace the old version with the new version in $dir/Chart.yaml
+            sed -i "s/version: .*/version: $new_version/" $dir/Chart.yaml
+          
+            # Print the new version
+            echo "Updated Helm chart version to: $new_version"
+          done
+
+      - name: Packing chart
+        run: |
+          cd charts
+          for dir in $(cat $(Build.SourcesDirectory)/change_dir.txt)
+          do
+            echo "$dir"
+            helm package $dir
+            version=$(cat $dir/Chart.yaml | grep "version: " | cut -d " " -f 2)
+            helm push $dir-$version.tgz oci://$(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
+          done
+      - name: 'Commit new version to main and create tag'
+        run: |
+          for dir in $(cat $(Build.SourcesDirectory)/change_dir.txt)
+          do
+            echo "$dir"
+            version=$(cat charts/$dir/Chart.yaml | grep "version: " | cut -d " " -f 2)
+            git config --global user.email "service@jan.ai"
+            git config --global user.name "Service Account"
+            git add charts/$dir/Chart.yaml
+            git commit -m "${{ env.GITHUB_REPOSITORY }}: Update tag build $version"
+            git -c http.extraheader="AUTHORIZATION: bearer ${{ secrets.GITHUB_TOKEN }}" push origin HEAD:main
+            git tag -a $dir-$version -m "${{ env.GITHUB_REPOSITORY }}: Update tag build $version for $dir"
+            git -c http.extraheader="AUTHORIZATION: bearer ${{ secrets.GITHUB_TOKEN }}" push origin $dir-$version
+          done

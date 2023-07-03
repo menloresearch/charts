@@ -1,0 +1,25 @@
+name: helm lint
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  linting:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+        with:  
+          fetch-depth: '0'
+      - uses: azure/setup-helm@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }} # only needed if version is 'latest'
+      - name: check linting
+        run: |
+          helm lint charts/*
+          for dir in $(ls charts)
+          do
+            helm template charts/$dir
+          done

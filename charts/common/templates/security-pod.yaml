@@ -1,0 +1,22 @@
+{{- $name := include "common.name" . -}}
+{{- $fullname := include "common.fullname" . -}}
+{{- $selectorLabels := include "common.selectorLabels" . -}}
+
+{{- range $key, $value := .Values.workloads }}
+---
+{{- if $value.podSecurityGroup.enabled -}}
+apiVersion: vpcresources.k8s.aws/v1beta1
+kind: SecurityGroupPolicy
+metadata:
+  name: {{ $fullname }}-pod-security-{{ $value.name }}
+spec:
+  podSelector: 
+    matchLabels:
+      app.kubernetes.io/name: {{ $name }}-{{ $value.name }}
+      app.kubernetes.io/component: {{ $value.name }}
+      {{- $selectorLabels | nindent 6 }}
+  securityGroups:
+    groupIds: 
+      {{- toYaml $value.podSecurityGroup.securitygroupid | nindent 6 }}
+{{- end}}
+{{- end}}

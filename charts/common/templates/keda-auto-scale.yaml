@@ -1,0 +1,35 @@
+{{- $name := include "common.name" . -}}
+{{- $fullname := include "common.fullname" . -}}
+{{- $labels := include "common.labels" . -}}
+
+
+{{- range $key, $value := .Values.workloads }}
+---
+{{- if not $value.autoscaling.enabled }}
+{{- if $value.kedaScaling.enabled }}
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ $fullname }}-keda-scale-{{ $value.name }}
+  labels:
+    app.kubernetes.io/name: {{ $name }}-{{ $value.name }}
+    {{- $labels | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: argoproj.io/v1alpha1
+    kind: Rollout
+    name: {{ $fullname }}-deployment-{{ $value.name }}
+  cooldownPeriod: {{ $value.kedaScaling.cooldownPeriod }}
+  maxReplicaCount: {{ $value.kedaScaling.maxReplicas }}
+  minReplicaCount: {{ $value.kedaScaling.minReplicas }}
+  pollingInterval: {{ $value.kedaScaling.pollingInterval }}
+  triggers:
+    - metadata:
+        metricName: {{ $value.kedaScaling.metricName }}
+        query: {{ $value.kedaScaling.query }}
+        serverAddress: {{ $value.kedaScaling.serverAddress }}
+        threshold: '{{ $value.kedaScaling.threshold }}'
+      type: prometheus
+{{- end }}
+{{- end }}
+{{- end }}

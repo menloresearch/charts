@@ -1,0 +1,17 @@
+{{- $labels := include "common.labels" . -}}
+{{- $fullname := include "common.fullname" . -}}
+{{- $selectorLabels := include "common.selectorLabels" . -}}
+
+{{- if .Values.podDisruptionBudget.create -}}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  labels:
+    {{- $labels | nindent 4 }}
+  name: {{ $fullname }}
+spec:
+  selector:
+    matchLabels:
+      {{- $selectorLabels | nindent 6 }}
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+{{- end}}
