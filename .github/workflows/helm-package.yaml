@@ -70,7 +70,7 @@ jobs:
       - name: Packing chart
         run: |
           cd charts
-          for dir in $(cat $(Build.SourcesDirectory)/change_dir.txt)
+          for dir in $(cat /tmp/change_dir.txt)
           do
             echo "$dir"
             helm package $dir
@@ -79,7 +79,7 @@ jobs:
           done
       - name: 'Commit new version to main and create tag'
         run: |
-          for dir in $(cat $(Build.SourcesDirectory)/change_dir.txt)
+          for dir in $(cat /tmp/change_dir.txt)
           do
             echo "$dir"
             version=$(cat charts/$dir/Chart.yaml | grep "version: " | cut -d " " -f 2)
