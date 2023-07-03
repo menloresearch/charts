@@ -87,7 +87,7 @@ jobs:
             git config --global user.name "Service Account"
             git add charts/$dir/Chart.yaml
             git commit -m "${GITHUB_REPOSITORY}: Update tag build $version"
-            git -c http.extraheader="AUTHORIZATION: bearer ${{ secrets.GITHUB_TOKEN }}" push origin HEAD:main
+            git -c http.extraheader="AUTHORIZATION: bearer ${{ secrets.PAT_SERVICE_ACCOUNT }}" push origin HEAD:main
             git tag -a $dir-$version -m "${GITHUB_REPOSITORY}: Update tag build $version for $dir"
-            git -c http.extraheader="AUTHORIZATION: bearer ${{ secrets.GITHUB_TOKEN }}" push origin $dir-$version
+            git -c http.extraheader="AUTHORIZATION: bearer ${{ secrets.PAT_SERVICE_ACCOUNT }}" push origin $dir-$version
           done
