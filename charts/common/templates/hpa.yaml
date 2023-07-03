@@ -1,0 +1,41 @@
+{{- $name := include "common.name" . -}}
+{{- $fullname := include "common.fullname" . -}}
+{{- $labels := include "common.labels" . -}}
+
+
+{{- range $key, $value := .Values.workloads }}
+---
+{{- if $value.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ $fullname }}-hpa-{{ $value.name }}
+  labels:
+    app.kubernetes.io/name: {{ $name }}-{{ $value.name }}
+    {{- $labels | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: argoproj.io/v1alpha1
+    kind: Rollout
+    name: {{ $fullname }}-deployment-{{ $value.name }}
+  minReplicas: {{ $value.autoscaling.minReplicas }}
+  maxReplicas: {{ $value.autoscaling.maxReplicas }}
+  metrics:
+    {{- if $value.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          averageUtilization: {{ $value.autoscaling.targetMemoryUtilizationPercentage }}
+          type: Utilization
+    {{- end }}
+    {{- if $value.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          averageUtilization: {{ $value.autoscaling.targetCPUUtilizationPercentage }}
+          type: Utilization
+    {{- end }}
+{{- end }}
+{{- end }}

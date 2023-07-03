@@ -1,0 +1,162 @@
+{{- $name := include "common.name" . -}}
+{{- $fullname := include "common.fullname" . -}}
+{{- $labels := include "common.labels" . -}}
+{{- $selectorLabels := include "common.selectorLabels" . -}}
+{{- $serviceAccountName := include "common.serviceAccountName" . -}}
+{{- $externalSecretName := include "common.externalSecretName" . -}}
+
+{{- $imagePullSecrets := .Values.imagePullSecrets -}}
+{{- $externalSecret := .Values.externalSecret -}}
+{{- $imageTag := .Values.imageTag -}}
+{{- $chartName := .Chart.Name -}}
+{{- $chartAppVersion := .Chart.AppVersion -}}
+
+{{- range $key, $value := .Values.workloads }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: {{ $name }}-deployment-{{ $value.name }}
+  {{- if eq $value.reloader "true" }}
+  annotations:
+    reloader.stakater.com/auto: "true"
+  {{- end }}
+  labels:
+    app.kubernetes.io/name: {{ $name }}-{{ $value.name }}
+    {{- $labels | nindent 4 }}
+spec:
+  {{- if not $value.autoscaling.enabled }}
+  replicas: {{ $value.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $name }}-{{ $value.name }}
+      app.kubernetes.io/component: {{ $value.name }}
+      {{- $selectorLabels | nindent 6 }}
+  strategy:
+    canary:
+      canaryService: {{ $fullname }}-service-preview-{{ $value.name }}
+      steps:
+      {{- toYaml $value.strategy.canary.steps | nindent 6 }}
+  template:
+    metadata:
+      {{- with $value.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        app.kubernetes.io/name: {{ $name }}-{{ $value.name }}
+        app.kubernetes.io/component: {{ $value.name }}
+        {{- $selectorLabels | nindent 8 }}
+    spec:
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app.kubernetes.io/name: {{ $name }}-{{ $value.name }}
+            app.kubernetes.io/component: {{ $value.name }}
+            {{- $selectorLabels | nindent 12 }}
+      - maxSkew: 1
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app.kubernetes.io/name: {{ $name }}-{{ $value.name }}
+            app.kubernetes.io/component: {{ $value.name }}
+            {{- $selectorLabels | nindent 12 }}
+      {{- with $imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ $serviceAccountName }}
+      securityContext:
+        {{- toYaml $value.podSecurityContext | nindent 8 }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: {{ $name }}-{{ $value.name }}
+                  app.kubernetes.io/component: {{ $value.name }}
+                  {{- $selectorLabels | nindent 18 }}
+              topologyKey: topology.kubernetes.io/zone
+            weight: 100
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: {{ $name }}-{{ $value.name }}
+                  app.kubernetes.io/component: {{ $value.name }}
+                  {{- $selectorLabels | nindent 18 }}
+              topologyKey: kubernetes.io/hostname
+            weight: 80
+      volumes: 
+        {{- if $value.volumes }}
+        {{- toYaml $value.volumes | nindent 8 }}
+        {{- end }}
+        {{- if and ($externalSecret.extraVolumeMountsFromSecret) ($externalSecret.create) }}
+        - name: {{ $externalSecretName }}
+          secret:
+            secretName: {{ $externalSecretName }}
+        {{- end }}
+      terminationGracePeriodSeconds: 120
+      containers:
+        - name: {{ $chartName }}
+          {{- if $value.command }}
+          command:
+          {{- toYaml $value.command | nindent 10 }}
+          args:
+          {{- toYaml $value.args | nindent 10 }}
+          {{- end }}
+          securityContext:
+            {{- toYaml $value.securityContext | nindent 12 }}
+          image: "{{ $value.image.repository }}:{{ $imageTag | default $chartAppVersion }}"
+          imagePullPolicy: {{ $value.image.pullPolicy }}
+          {{- if $value.livenessProbe }}
+          livenessProbe:
+            {{- toYaml $value.livenessProbe | nindent 12 }}
+          {{- end }}
+          {{- if $value.readinessProbe }}
+          readinessProbe:
+            {{- toYaml $value.readinessProbe | nindent 12 }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ $value.ports.containerPort }}
+              protocol: TCP
+          volumeMounts:
+            {{- if $value.volumeMounts }}
+            {{- toYaml $value.volumeMounts | nindent 12 }}
+            {{- end }}
+            {{- if $externalSecret.create }}
+            {{- range $externalSecret.extraVolumeMountsFromSecret }}
+            - name: {{ $externalSecretName }}
+              {{- range $key1, $value1 := . }}
+                {{- if ne $key1 "name"}}
+                  {{- $key1 | nindent 14 }}: {{ $value1 }}
+                {{- end }}
+              {{- end }}
+            {{- end }}
+            {{- end }}
+          resources:
+            {{- toYaml $value.resources | nindent 12 }}
+          env:
+          {{- if $value.env }}
+            {{- toYaml $value.env | nindent 12 }}
+          {{- end }}
+          envFrom:
+          {{- if $externalSecret.create }}
+            - secretRef:
+                name: {{ $externalSecret.name }}
+          {{- end }}
+      {{- with $value.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $value.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end}}

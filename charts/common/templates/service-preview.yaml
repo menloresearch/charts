@@ -1,0 +1,27 @@
+{{- $name := include "common.name" . -}}
+{{- $fullname := include "common.fullname" . -}}
+{{- $labels := include "common.labels" . -}}
+{{- $selectorLabels := include "common.selectorLabels" . -}}
+
+{{- range $key, $value := .Values.workloads }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullname }}-service-preview-{{ $value.name }}
+  labels:
+    app.kubernetes.io/name: {{ $name }}-{{ $value.name }}
+    {{- $labels | nindent 4 }}
+spec:
+  type: {{ $value.service.type }}
+  ports:
+    - port: {{ $value.service.port }}
+      targetPort: {{ $value.service.targetPort }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- $selectorLabels | nindent 4 }}
+    app.kubernetes.io/component: {{ $value.name }}
+    app.kubernetes.io/name: {{ $name }}-{{ $value.name }}
+
+{{- end }}
