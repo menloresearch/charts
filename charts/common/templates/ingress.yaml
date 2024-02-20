@@ -3,7 +3,6 @@
 {{- $capabilities := .Capabilities -}}
 
 {{- range $key, $value := .Values.workloads }}
----
 
 {{- if $value.ingress.enabled -}}
 {{- $svcPort := $value.service.port -}}
@@ -66,4 +65,5 @@ spec:
           {{- end }}
     {{- end }}
 {{- end }}
+---
 {{- end }}

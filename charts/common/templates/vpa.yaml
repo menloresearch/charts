@@ -1,0 +1,28 @@
+
+{{- $name := include "common.name" . -}}
+{{- $fullname := include "common.fullname" . -}}
+{{- $labels := include "common.labels" . -}}
+{{- $selectorLabels := include "common.selectorLabels" . -}}
+{{- $chartName := .Chart.Name -}}
+
+{{- range $key, $value := .Values.workloads }}
+---
+{{- if $value.vpa.enabled }}
+apiVersion: autoscaling.k8s.io/v1beta2
+kind: VerticalPodAutoscaler
+metadata:
+  name: {{ $name }}-vpa-{{ $value.name }}
+  labels:
+    app.kubernetes.io/name: {{ $name }}-{{ $value.name }}
+    {{- $labels | nindent 4 }}
+spec:
+  targetRef:
+    apiVersion: argoproj.io/v1alpha1
+    kind: Rollout
+    name: {{ $fullname }}-deployment-{{ $value.name }}
+  updatePolicy:
+    updateMode: {{ printf "%s" $value.vpa.updateMode }}
+  resourcePolicy:
+    {{- toYaml $value.vpa.resourcePolicy | nindent 6 }}
+{{- end }}
+{{ end -}}

@@ -4,7 +4,7 @@
 
 
 {{- range $key, $value := .Values.workloads }}
----
+
 {{- if not $value.autoscaling.enabled }}
 {{- if $value.kedaScaling.enabled }}
 apiVersion: keda.sh/v1alpha1
@@ -32,4 +32,5 @@ spec:
       type: prometheus
 {{- end }}
 {{- end }}
+---
 {{- end }}

@@ -4,7 +4,7 @@
 {{- $selectorLabels := include "common.selectorLabels" . -}}
 
 {{- range $key, $value := .Values.workloads }}
----
+
 apiVersion: v1
 kind: Service
 metadata:
@@ -23,5 +23,5 @@ spec:
     {{- $selectorLabels | nindent 4 }}
     app.kubernetes.io/component: {{ $value.name }}
     app.kubernetes.io/name: {{ $name }}-{{ $value.name }}
-
+---
 {{- end }}

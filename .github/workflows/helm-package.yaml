@@ -12,7 +12,12 @@ on:
 
 jobs:
   packing:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
+    env:
+      HELM_EXPERIMENTAL_OCI: 1
+      GCR_IMAGE: ghcr.io/janhq/charts
     steps:
       - uses: actions/checkout@v3
         with:  
@@ -22,6 +27,7 @@ jobs:
       - uses: azure/setup-helm@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }} # only needed if version is 'latest'
+
       - name: check linting
         run: |
           helm lint charts/*
@@ -39,7 +45,7 @@ jobs:
         
       - name: Helm repo login
         run: |
-          helm registry login ${{ secrets.ACR_URL }} --username ${{ secrets.ACR_USERNAME }} --password ${{ secrets.ACR_PASSWORD }}
+          echo ${{ secrets.PAT_SERVICE_ACCOUNT }} | helm registry login ${{ env.GCR_IMAGE }} --username ${{ secrets.SERVICE_ACCOUNT_USERNAME }} --password-stdin
       
       - name: 'Auto Increase Helm Version'
         run: |
@@ -76,7 +82,7 @@ jobs:
             echo "$dir"
             helm package $dir
             version=$(cat $dir/Chart.yaml | grep "version: " | cut -d " " -f 2)
-            helm push $dir-$version.tgz oci://${{ secrets.ACR_URL }}/helm
+            helm push $dir-$version.tgz oci://${{ env.GCR_IMAGE }}
           done
       - name: 'Commit new version to main and create tag'
         run: |

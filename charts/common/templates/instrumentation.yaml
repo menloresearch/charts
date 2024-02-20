@@ -1,0 +1,164 @@
+{{- range $key, $value := .Values.workloads }}
+---
+{{- if $value.instrumentation.enabled -}}
+{{- if eq $value.instrumentation.type "python" }}
+apiVersion: opentelemetry.io/v1alpha1
+kind: Instrumentation
+metadata:
+  name: {{ $value.instrumentation.name }}
+spec:
+  env:
+    - name: OTEL_EXPORTER_OTLP_TIMEOUT
+      value: "20"
+    - name: OTEL_TRACES_SAMPLER
+      value: parentbased_traceidratio
+    - name: OTEL_TRACES_SAMPLER_ARG
+      value: "{{ $value.instrumentation.sampler | default "1"  }}"
+    - name: SPLUNK_TRACE_RESPONSE_HEADER_ENABLED
+      value: "true"
+  exporter:
+    endpoint: {{ $value.instrumentation.endpoint }}
+  propagators:
+    {{- if $value.instrumentation.xray }}
+      - xray
+    {{- else }}
+      - tracecontext
+      - baggage
+    {{- end }}
+  sampler:
+    type: parentbased_traceidratio
+    argument: "{{ $value.instrumentation.sampler | default "1"  }}"
+  python:
+    env:
+      {{- if $value.instrumentation.xray }}
+      - name: OTEL_PYTHON_ID_GENERATOR
+        value: xray
+      {{- end }}
+      - name: OTEL_PYTHON_INSTRUMENTATION_SANITIZE_REDIS
+        value: "true"
+      - name: OTEL_PYTHON_LOG_CORRELATION
+        value: "true"
+      - name: OTEL_LOG_LEVEL
+        value: "debug"
+      - name: OTEL_PYTHON_LOG_LEVEL
+        value: "debug"
+      - name: OTEL_TRACES_EXPORTER
+        value: otlp_proto_http
+      - name: OTEL_METRICS_EXPORTER
+        value: none
+      - name: OTEL_LOG_EXPORTER
+        value: otlp_proto_http
+      - name: OTEL_EXPORTER_OTLP_LOGS_PROTOCOL
+        value: "http/protobuf"
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: {{ $value.instrumentation.endpoint }}
+      - name: OTEL_SERVICE_NAME
+        value: {{ $value.instrumentation.servicename }}
+    image: {{ $value.instrumentation.image }}
+{{- end }}
+
+{{- if eq $value.instrumentation.type "dotnet" }}
+apiVersion: opentelemetry.io/v1alpha1
+kind: Instrumentation
+metadata:
+  name: {{ $value.instrumentation.name }}
+spec:
+  env:
+    - name: OTEL_EXPORTER_OTLP_TIMEOUT
+      value: "20"
+    - name: OTEL_TRACES_SAMPLER
+      value: parentbased_traceidratio
+    - name: OTEL_TRACES_SAMPLER_ARG
+      value: "{{ $value.instrumentation.sampler | default "1"  }}"
+    - name: SPLUNK_TRACE_RESPONSE_HEADER_ENABLED
+      value: "true"
+  exporter:
+    endpoint: {{ $value.instrumentation.endpoint }}
+  propagators:
+    {{- if $value.instrumentation.xray }}
+      - xray
+    {{- else }}
+      - tracecontext
+      - baggage
+    {{- end }}
+  sampler:
+    type: parentbased_traceidratio
+    argument: "{{ $value.instrumentation.sampler | default "1"  }}"
+  dotnet:
+    env:
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: {{ $value.instrumentation.endpoint }}
+      - name: OTEL_SERVICE_NAME
+        value: {{ $value.instrumentation.servicename }}
+    image: {{ $value.instrumentation.image }}
+
+{{- end }}
+
+{{- if eq $value.instrumentation.type "nodejs" }}
+apiVersion: opentelemetry.io/v1alpha1
+kind: Instrumentation
+metadata:
+  name: {{ $value.instrumentation.name }}
+spec:
+  env:
+    - name: OTEL_EXPORTER_OTLP_TIMEOUT
+      value: "20"
+    - name: OTEL_TRACES_SAMPLER
+      value: parentbased_traceidratio
+    - name: OTEL_TRACES_SAMPLER_ARG
+      value: "{{ $value.instrumentation.sampler | default "1"  }}"
+    - name: SPLUNK_TRACE_RESPONSE_HEADER_ENABLED
+      value: "true"
+  exporter:
+    endpoint: {{ $value.instrumentation.endpoint }}
+  propagators:
+    {{- if $value.instrumentation.xray }}
+      - xray
+    {{- else }}
+      - tracecontext
+      - baggage
+    {{- end }}
+  sampler:
+    type: parentbased_traceidratio
+    argument: "{{ $value.instrumentation.sampler | default "1"  }}"
+  nodejs:
+    env:
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: {{ $value.instrumentation.endpoint }}
+      - name: OTEL_SERVICE_NAME
+        value: {{ $value.instrumentation.servicename }}
+
+{{- end }}
+
+{{- if eq $value.instrumentation.type "nginx" }}
+apiVersion: opentelemetry.io/v1alpha1
+kind: Instrumentation
+metadata:
+  name: {{ $value.instrumentation.name }}
+spec:
+  exporter:
+    endpoint: {{ $value.instrumentation.endpoint }}
+  propagators:
+    {{- if $value.instrumentation.xray }}
+      - xray
+    {{- else }}
+      - tracecontext
+      - baggage
+    {{- end }}
+  sampler:
+    type: parentbased_traceidratio
+    argument: "{{ $value.instrumentation.sampler | default "1"  }}"
+  nginx:
+    configFile: {{ $value.instrumentation.nginxConfigPath }}
+    attrs:
+    - name: NginxModuleServiceName
+      value: {{ $value.instrumentation.servicename }}
+    - name: NginxModuleServiceNamespace
+      value: {{ $value.instrumentation.servicename }}
+    - name: NginxModuleServiceInstanceId
+      value: {{ $value.instrumentation.servicename }}
+
+{{- end }}
+
+{{- end }}
+{{- end }}

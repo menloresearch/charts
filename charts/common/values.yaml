@@ -16,16 +16,28 @@ externalSecret:
   create: false
   name: "common-secret"
   annotations: {}
-  # Currently, this chart only support 1 backends azureKeyVaults
-  backendType: azureKeyVaults
-  userAssignedIdentityID: "" # Set the clientID of the user-assigned managed identity to use. Staging will be "564839d0-6cd1-45f7-aba7-c8ba2389ebab"
-  keyvaultName: "" # Name of the keyvault, staging will be "jankeyvaultstaging"
-  tenantId: "378d177e-843b-4c8f-891f-3dd3c23fe060"
-  data:
-    - key: FOO          # The environment variable key that will be present inside pod
-      objectName: FOO   # The Secret Object key on Azure Keyvaults
-    - key: FOO2          # The environment variable key that will be present inside pod
-      objectName: FOO2   # The Secret Object key on Azure Keyvaults
+  # Currently, this chart only support 3 backends: azureKeyVaults, vaults and secretsManager
+
+  # Azure KeyVaults
+  # backendType: azureKeyVaults
+  # userAssignedIdentityID: "" # Set the clientID of the user-assigned managed identity to use.
+  # keyvaultName: "" # Name of the keyvault
+  # tenantId: ""
+  # data:
+  #   - key: FOO # The environment variable key that will be present inside pod
+  #     objectName: FOO # The Secret Object key on Azure Keyvaults
+  #   - key: FOO2 # The environment variable key that will be present inside pod
+  #     objectName: FOO2 # The Secret Object key on Azure Keyvaults
+
+  # AWS Secrets Manager or HashiCorp Vault
+  # backendType: secretsManager/vaults
+  # roleArn: ""
+  # controllerId: ""
+  # region: "us-east-1"
+  # data: []
+  # dataFrom:
+  #   - prod/common_module/env
+  # template: {}
 
 nameOverride: "common-module"
 fullnameOverride: "common-module"
@@ -73,6 +85,18 @@ workloads:
               pathType: Prefix
       tls: []
 
+    instrumentation:
+      enabled: false
+      name: common-api-prod
+      endpoint: http://otel-collector.opentelemetry-operator:4318
+      image: ""
+      servicename: common-api-prod
+      sampler: 1
+      xray: false
+      # support types: python, dotnet, nodejs, nginx
+      type: nginx
+      nginxConfigPath: /etc/nginx/nginx.conf
+
     podAnnotations: {}
 
     podSecurityContext: {}
@@ -110,22 +134,22 @@ workloads:
       maxReplicas: 3
       targetCPUUtilizationPercentage: 95
       targetMemoryUtilizationPercentage: 95
-    
+
     kedaScaling:
-      enabled: false   # ignore if autoscaling.enable = true
+      enabled: false # ignore if autoscaling.enable = true
       cooldownPeriod: 30
       pollingInterval: 2
       minReplicas: 1
       maxReplicas: 5
       metricName: celery_queue_length
-      query: celery_queue_length{queue_name="myqueue"}   # change queue_name here    
+      query: celery_queue_length{queue_name="myqueue"} # change queue_name here
       serverAddress: http://prometheus-stag-kube-prome-prometheus.monitoring.svc:9090
-      threshold: '3'
-      
+      threshold: "3"
+
     nodeSelector: {}
 
     tolerations: []
-    
+
     podSecurityGroup:
       enabled: false
       securitygroupid: []
@@ -133,3 +157,8 @@ workloads:
     # Reloader Option
     reloader: "true"
 
+    # VPA Option
+    vpa:
+      enabled: false
+      updateMode: "Off"
+      resourcePolicy: {}
