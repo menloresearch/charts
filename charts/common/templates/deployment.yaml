@@ -34,10 +34,18 @@ spec:
       app.kubernetes.io/component: {{ $value.name }}
       {{- $selectorLabels | nindent 6 }}
   strategy:
+    {{- if hasKey $value.strategy "canary" }}
     canary:
       canaryService: {{ $fullname }}-service-preview-{{ $value.name }}
       steps:
       {{- toYaml $value.strategy.canary.steps | nindent 6 }}
+    {{- end}}
+    {{- if hasKey $value.strategy "recreate" }}
+    {{- with $value.strategy.recreate}}
+    recreate:
+      {{- toYaml . | nindent 6 }}
+    {{- end}}
+    {{- end}}
   template:
     metadata:
       {{- with $value.podAnnotations }}
