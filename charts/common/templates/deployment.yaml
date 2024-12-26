@@ -3,7 +3,6 @@
 {{- $labels := include "common.labels" . -}}
 {{- $selectorLabels := include "common.selectorLabels" . -}}
 {{- $serviceAccountName := include "common.serviceAccountName" . -}}
-{{- $injectAnnotation := include "common.injectAnnotation" . -}}
 {{- $imagePullSecrets := .Values.imagePullSecrets -}}
 {{- $imageTag := .Values.imageTag -}}
 {{- $chartName := .Chart.Name -}}
@@ -42,23 +41,6 @@ spec:
         app.kubernetes.io/name: {{ $name }}-{{ $value.name }}
       {{- with $value.podAnnotations }}
         {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- if $value.instrumentation.enabled }}
-        {{- if eq $value.instrumentation.type "java" }}
-        instrumentation.opentelemetry.io/inject-java: "true"
-        {{- end }}
-        {{- if eq $value.instrumentation.type  "dotnet" }}
-        instrumentation.opentelemetry.io/inject-dotnet: "true"
-        {{- end }}
-        {{- if eq $value.instrumentation.type "go" }}
-        instrumentation.opentelemetry.io/inject-go: "true"
-        {{- end }}
-        {{- if eq $value.instrumentation.type "nodejs" }}
-        instrumentation.opentelemetry.io/inject-nodejs: "true"
-        {{- end }}
-        {{- if eq $value.instrumentation.type "python" }}
-        instrumentation.opentelemetry.io/inject-python: "true"
-        {{- end }}
       {{- end }}
       labels:
         app.kubernetes.io/name: {{ $name }}-{{ $value.name }}
