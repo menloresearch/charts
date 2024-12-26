@@ -1,43 +1,16 @@
-imageTag: 0.0.1
+imageTag: 0.0.1-2023.1.1
 # DO NOT CHANGE THE LINE ABOVE. MAKE ALL CHANGES BELOW
 
 # Global pvc for all workload
 pvc:
   enabled: false
   name: ""
-  accessModes: "ReadWriteMany"
-  storageClassName: "default"
-  capacity: "10Gi"
+  storageClassName: ""
+  volumeHandle: ""
+  capacity: "1Gi"
 
 # Global image pull secret
 imagePullSecrets: []
-
-externalSecret:
-  create: false
-  name: "common-secret"
-  annotations: {}
-  # Currently, this chart only support 3 backends: azureKeyVaults, vaults and secretsManager
-
-  # Azure KeyVaults
-  # backendType: azureKeyVaults
-  # userAssignedIdentityID: "" # Set the clientID of the user-assigned managed identity to use.
-  # keyvaultName: "" # Name of the keyvault
-  # tenantId: ""
-  # data:
-  #   - key: FOO # The environment variable key that will be present inside pod
-  #     objectName: FOO # The Secret Object key on Azure Keyvaults
-  #   - key: FOO2 # The environment variable key that will be present inside pod
-  #     objectName: FOO2 # The Secret Object key on Azure Keyvaults
-
-  # AWS Secrets Manager or HashiCorp Vault
-  # backendType: secretsManager/vaults
-  # roleArn: ""
-  # controllerId: ""
-  # region: "us-east-1"
-  # data: []
-  # dataFrom:
-  #   - prod/common_module/env
-  # template: {}
 
 nameOverride: "common-module"
 fullnameOverride: "common-module"
@@ -50,6 +23,11 @@ serviceAccount:
 podDisruptionBudget:
   create: true
   minAvailable: 1
+
+instrumentation:
+  sampler: 1
+  xray: false
+  endpoint: "http://otel-collector:4318"
 
 workloads:
   - name: api
@@ -79,7 +57,22 @@ workloads:
         nginx.ingress.kubernetes.io/proxy-send-timeout: "1800"
         kubernetes.io/ingress.class: nginx
       hosts:
-        - host: common-api.jan.ai
+        - host: common-api.menlo.ai
+          paths:
+            - path: /
+              pathType: Prefix
+      tls: []
+
+    extraIngress:
+      enabled: false
+      className: ""
+      annotations:
+        nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "1800"
+        nginx.ingress.kubernetes.io/proxy-send-timeout: "1800"
+        kubernetes.io/ingress.class: nginx
+      hosts:
+        - host: common-api-extra.menlo.ai
           paths:
             - path: /
               pathType: Prefix
@@ -87,15 +80,7 @@ workloads:
 
     instrumentation:
       enabled: false
-      name: common-api-prod
-      endpoint: http://otel-collector.opentelemetry-operator:4318
-      image: ""
-      servicename: common-api-prod
-      sampler: 1
-      xray: false
-      # support types: python, dotnet, nodejs, nginx
-      type: nginx
-      nginxConfigPath: /etc/nginx/nginx.conf
+      type: python
 
     podAnnotations: {}
 
@@ -126,14 +111,29 @@ workloads:
     #     mountPath: /storage
 
     env: []
+    configMapName: "test"
+    externalSecret:
+      create: false
+      name: "common-secret"
+      annotations: {}
+      # Currently, this chart only support 2 backends: vaults, secretsManager
+      backendType: vaults
+      secretStoreRefName: vault-secret-manager
+      secretStoreRefKind: ClusterSecretStore
+      roleArn: ""
+      controllerId: ""
+      region: "us-east-1"
+      data: []
+      dataFrom: []
+      template: {}
 
     lifecycle: {}
     autoscaling:
       enabled: true
       minReplicas: 1
       maxReplicas: 3
-      targetCPUUtilizationPercentage: 95
-      targetMemoryUtilizationPercentage: 95
+      targetCPUUtilizationPercentage: 80
+      targetMemoryUtilizationPercentage: 80
 
     kedaScaling:
       enabled: false # ignore if autoscaling.enable = true
@@ -146,6 +146,10 @@ workloads:
       serverAddress: http://prometheus-stag-kube-prome-prometheus.monitoring.svc:9090
       threshold: "3"
 
+    vpa:
+      enabled: true
+      updateMode: "Off"
+      resourcePolicy: {}
     nodeSelector: {}
 
     tolerations: []
@@ -156,9 +160,3 @@ workloads:
 
     # Reloader Option
     reloader: "true"
-
-    # VPA Option
-    vpa:
-      enabled: false
-      updateMode: "Off"
-      resourcePolicy: {}

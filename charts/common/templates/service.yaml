@@ -4,7 +4,7 @@
 {{- $selectorLabels := include "common.selectorLabels" . -}}
 
 {{- range $key, $value := .Values.workloads }}
-
+---
 apiVersion: v1
 kind: Service
 metadata:
@@ -17,14 +17,19 @@ metadata:
     {{- $labels | nindent 4 }}
 spec:
   type: {{ $value.service.type }}
+  {{- if $value.service.port }}
   ports:
     - port: {{ $value.service.port }}
       targetPort: {{ $value.service.targetPort }}
       protocol: TCP
       name: http
+  {{- else}}
+  ports:
+    {{- toYaml $value.service.ports | nindent 4 }}
+  {{- end}}
   selector:
     {{- $selectorLabels | nindent 4 }}
     app.kubernetes.io/component: {{ $value.name }}
     app.kubernetes.io/name: {{ $name }}-{{ $value.name }}
----
+
 {{- end }}

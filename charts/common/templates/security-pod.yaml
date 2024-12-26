@@ -3,7 +3,7 @@
 {{- $selectorLabels := include "common.selectorLabels" . -}}
 
 {{- range $key, $value := .Values.workloads }}
-
+---
 {{- if $value.podSecurityGroup.enabled -}}
 apiVersion: vpcresources.k8s.aws/v1beta1
 kind: SecurityGroupPolicy
@@ -19,5 +19,4 @@ spec:
     groupIds: 
       {{- toYaml $value.podSecurityGroup.securitygroupid | nindent 6 }}
 {{- end}}
----
 {{- end}}

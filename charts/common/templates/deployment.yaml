@@ -3,16 +3,14 @@
 {{- $labels := include "common.labels" . -}}
 {{- $selectorLabels := include "common.selectorLabels" . -}}
 {{- $serviceAccountName := include "common.serviceAccountName" . -}}
-{{- $externalSecretName := include "common.externalSecretName" . -}}
-
+{{- $injectAnnotation := include "common.injectAnnotation" . -}}
 {{- $imagePullSecrets := .Values.imagePullSecrets -}}
-{{- $externalSecret := .Values.externalSecret -}}
 {{- $imageTag := .Values.imageTag -}}
 {{- $chartName := .Chart.Name -}}
 {{- $chartAppVersion := .Chart.AppVersion -}}
 
 {{- range $key, $value := .Values.workloads }}
-
+---
 apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 metadata:
@@ -34,29 +32,42 @@ spec:
       app.kubernetes.io/component: {{ $value.name }}
       {{- $selectorLabels | nindent 6 }}
   strategy:
-    {{- if hasKey $value.strategy "canary" }}
     canary:
       canaryService: {{ $fullname }}-service-preview-{{ $value.name }}
       steps:
       {{- toYaml $value.strategy.canary.steps | nindent 6 }}
-    {{- end}}
-    {{- if hasKey $value.strategy "recreate" }}
-    {{- with $value.strategy.recreate}}
-    recreate:
-      {{- toYaml . | nindent 6 }}
-    {{- end}}
-    {{- end}}
   template:
     metadata:
-      {{- with $value.podAnnotations }}
       annotations:
+        app.kubernetes.io/name: {{ $name }}-{{ $value.name }}
+      {{- with $value.podAnnotations }}
         {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if $value.instrumentation.enabled }}
+        {{- if eq $value.instrumentation.type "java" }}
+        instrumentation.opentelemetry.io/inject-java: "true"
+        {{- end }}
+        {{- if eq $value.instrumentation.type  "dotnet" }}
+        instrumentation.opentelemetry.io/inject-dotnet: "true"
+        {{- end }}
+        {{- if eq $value.instrumentation.type "go" }}
+        instrumentation.opentelemetry.io/inject-go: "true"
+        {{- end }}
+        {{- if eq $value.instrumentation.type "nodejs" }}
+        instrumentation.opentelemetry.io/inject-nodejs: "true"
+        {{- end }}
+        {{- if eq $value.instrumentation.type "python" }}
+        instrumentation.opentelemetry.io/inject-python: "true"
+        {{- end }}
       {{- end }}
       labels:
         app.kubernetes.io/name: {{ $name }}-{{ $value.name }}
         app.kubernetes.io/component: {{ $value.name }}
         {{- $selectorLabels | nindent 8 }}
     spec:
+      {{- if $value.priorityClassName }}
+      priorityClassName: {{ $value.priorityClassName }}
+      {{- end }}
       topologySpreadConstraints:
       - maxSkew: 1
         topologyKey: kubernetes.io/hostname
@@ -104,10 +115,10 @@ spec:
         {{- if $value.volumes }}
         {{- toYaml $value.volumes | nindent 8 }}
         {{- end }}
-        {{- if and ($externalSecret.extraVolumeMountsFromSecret) ($externalSecret.create) }}
-        - name: {{ $externalSecretName }}
+        {{- if and ($value.externalSecret.extraVolumeMountsFromSecret) ($value.externalSecret.create) }}
+        - name: {{ $value.externalSecret.name }}
           secret:
-            secretName: {{ $externalSecretName }}
+            secretName: {{ $value.externalSecret.name }}
         {{- end }}
       terminationGracePeriodSeconds: 120
       containers:
@@ -115,12 +126,18 @@ spec:
           {{- if $value.command }}
           command:
           {{- toYaml $value.command | nindent 10 }}
+          {{- end }}
+          {{- if $value.args }}
           args:
           {{- toYaml $value.args | nindent 10 }}
           {{- end }}
           securityContext:
             {{- toYaml $value.securityContext | nindent 12 }}
+          {{- if $value.image.imageTag }}
+          image: "{{ $value.image.repository }}:{{ $value.image.imageTag }}"
+          {{- else }}
           image: "{{ $value.image.repository }}:{{ $imageTag | default $chartAppVersion }}"
+          {{- end }}
           imagePullPolicy: {{ $value.image.pullPolicy }}
           {{- if $value.livenessProbe }}
           livenessProbe:
@@ -130,17 +147,22 @@ spec:
           readinessProbe:
             {{- toYaml $value.readinessProbe | nindent 12 }}
           {{- end }}
+          {{- if eq (kindOf $value.ports) "map" }}
           ports:
             - name: http
               containerPort: {{ $value.ports.containerPort }}
               protocol: TCP
+          {{- else}}
+          ports:
+            {{- toYaml $value.ports | nindent 12 }}
+          {{- end}}
           volumeMounts:
             {{- if $value.volumeMounts }}
             {{- toYaml $value.volumeMounts | nindent 12 }}
             {{- end }}
-            {{- if $externalSecret.create }}
-            {{- range $externalSecret.extraVolumeMountsFromSecret }}
-            - name: {{ $externalSecretName }}
+            {{- if $value.externalSecret.create }}
+            {{- range $value.externalSecret.extraVolumeMountsFromSecret }}
+            - name: {{ $value.externalSecret.name }}
               {{- range $key1, $value1 := . }}
                 {{- if ne $key1 "name"}}
                   {{- $key1 | nindent 14 }}: {{ $value1 }}
@@ -150,14 +172,22 @@ spec:
             {{- end }}
           resources:
             {{- toYaml $value.resources | nindent 12 }}
-          env:
+          
           {{- if $value.env }}
+          env:
             {{- toYaml $value.env | nindent 12 }}
           {{- end }}
+          
+          {{- if or $value.configMapName $value.externalSecret.create }}
           envFrom:
-          {{- if $externalSecret.create }}
+            {{- if $value.configMapName }}
+            - configMapRef:
+                name: {{ $value.configMapName }}
+            {{- end }}
+            {{- if $value.externalSecret.create }}
             - secretRef:
-                name: {{ $externalSecret.name }}
+                name: {{ $value.externalSecret.name }}
+            {{- end }}
           {{- end }}
       {{- with $value.nodeSelector }}
       nodeSelector:
@@ -167,5 +197,4 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
----
 {{- end}}

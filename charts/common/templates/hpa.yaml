@@ -4,7 +4,7 @@
 
 
 {{- range $key, $value := .Values.workloads }}
-
+---
 {{- if $value.autoscaling.enabled }}
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -38,5 +38,4 @@ spec:
           type: Utilization
     {{- end }}
 {{- end }}
----
 {{- end }}

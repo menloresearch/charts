@@ -1,3 +1,21 @@
+{{- if and .Values.pvc.enabled  (not (empty .Values.pvc.volumeHandle))}}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ .Values.pvc.name }}
+spec:
+  capacity:
+    storage: {{ .Values.pvc.capacity }}
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: {{ .Values.pvc.storageClassName }}
+  csi:
+    driver: nfs.csi.k8s.io
+    volumeHandle: {{ .Values.pvc.volumeHandle }}
+{{- end}}
+---
 {{- if .Values.pvc.enabled -}}
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -5,10 +23,17 @@ metadata:
   name: {{ .Values.pvc.name }}
 spec:
   accessModes:
-    - {{ .Values.pvc.accessModes }}
+    - ReadWriteMany
+  {{- if and .Values.pvc.enabled  (not (empty .Values.pvc.volumeHandle))}}
+  volumeName: {{ .Values.pvc.name }}
+  {{- end}}
   storageClassName: {{ .Values.pvc.storageClassName }}
   resources:
     requests:
+      {{- if .Values.pvc.size }}
+      storage: {{ .Values.pvc.size }}
+      {{- else}}
       # I put 1Mi so that everyone knows the storage is infinite
-      storage: {{ .Values.pvc.capacity }}
+      storage: {{ .Values.pvc.capacity }} 
+      {{- end}}
 {{- end}}
