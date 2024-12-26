@@ -24,11 +24,6 @@ podDisruptionBudget:
   create: true
   minAvailable: 1
 
-instrumentation:
-  sampler: 1
-  xray: false
-  endpoint: "http://otel-collector:4318"
-
 workloads:
   - name: api
     image:
@@ -80,7 +75,15 @@ workloads:
 
     instrumentation:
       enabled: false
-      type: python
+      name: common-api-prod
+      endpoint: http://otel-collector.opentelemetry-operator:4318
+      image: ""
+      servicename: common-api-prod
+      sampler: 1
+      xray: false
+      # support types: python, dotnet, nodejs, nginx
+      type: nginx
+      nginxConfigPath: /etc/nginx/nginx.conf
 
     podAnnotations: {}
 
