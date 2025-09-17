@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       HELM_EXPERIMENTAL_OCI: 1
-      GCR_IMAGE: ghcr.io/janhq/charts
+      GCR_IMAGE: ghcr.io/menloresearch/charts
     steps:
       - uses: actions/checkout@v3
         with:  
