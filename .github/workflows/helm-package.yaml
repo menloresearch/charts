@@ -1,4 +1,4 @@
-name: helm lint
+name: helm package
 
 on:
   push:
