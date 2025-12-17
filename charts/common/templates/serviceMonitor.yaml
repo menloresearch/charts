@@ -1,0 +1,39 @@
+{{- $name := include "common.name" . -}}
+{{- $fullname := include "common.fullname" . -}}
+{{- $labels := include "common.labels" . -}}
+
+{{- range $key, $value := .Values.workloads }}
+{{- if $value.serviceMonitor.enabled }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ $fullname }}-service-monitor-{{ $value.name }}
+  labels:
+    app.kubernetes.io/name: {{ $name }}-{{ $value.name }}
+    {{- $labels | nindent 4 }}
+    {{- with $value.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $name }}-{{ $value.name }}
+  endpoints:
+    - port: http
+      path: {{ $value.serviceMonitor.path }}
+      interval: {{ $value.serviceMonitor.interval }}
+      scrapeTimeout: {{ $value.serviceMonitor.scrapeTimeout }}
+      {{- with $value.serviceMonitor.scheme }}
+      scheme: {{ . }}
+      {{- end }}
+      {{- with $value.serviceMonitor.relabelings }}
+      relabelings:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $value.serviceMonitor.metricRelabelings }}
+      metricRelabelings:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}
+{{- end }}
