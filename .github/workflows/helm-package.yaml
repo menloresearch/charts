@@ -45,7 +45,7 @@ jobs:
         
       - name: Helm repo login
         run: |
-          echo ${{ secrets.PAT_SERVICE_ACCOUNT }} | helm registry login ${{ env.GCR_IMAGE }} --username ${{ secrets.SERVICE_ACCOUNT_USERNAME }} --password-stdin
+          echo ${{ secrets.PAT_SERVICE_ACCOUNT }} | helm registry login ghcr.io --username ${{ secrets.SERVICE_ACCOUNT_USERNAME }} --password-stdin
       
       - name: 'Auto Increase Helm Version'
         run: |
